@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<!--
+  Airtightness Test Planner
+  Developed by Green Mountain Enclosure Consulting LLC, Bristol, Vermont.
+  Distributed free of charge to the building enclosure testing community.
+  Please keep this credit line intact if you share or redistribute this file.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="Green Mountain Enclosure Consulting LLC">
+<meta name="application-name" content="Airtightness Test Planner">
+<meta name="description" content="Airtightness Test Planner — free tool for building-enclosure airtightness test planning. Developed by Green Mountain Enclosure Consulting LLC, Bristol, Vermont.">
+<title>Airtightness Test Planner</title>
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><filter id="g" x="-50%25" y="-50%25" width="200%25" height="200%25"><feGaussianBlur stdDeviation="2.5"/></filter></defs><path d="M10 30L32 10L54 30L54 54L10 54Z" fill="%23ff9800" filter="url(%23g)" opacity=".9"/><path d="M10 30L32 10L54 30L54 54L10 54Z" fill="%23ffffff"/><path d="M10 30L32 10L54 30L54 54L10 54Z" fill="%239b27af" fill-opacity=".5" stroke="%235b21b6" stroke-width="2.5" stroke-linejoin="round"/></svg>'>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;background:#1e2433;}
+#app{display:flex;width:100%;height:100%;}
+
+/* ── TOOLBAR ── */
+#toolbar{
+  width:60px;min-width:60px;background:#1e2433;display:flex;flex-direction:column;
+  align-items:center;padding:8px 0;gap:2px;border-right:1px solid #2e3650;
+  overflow-y:auto;overflow-x:hidden;
+}
+.tb-sep{width:36px;height:1px;background:#2e3650;margin:4px 0;}
+.tb-label{font-size:9px;color:#6b7a99;letter-spacing:1px;text-transform:uppercase;margin:4px 0 2px;}
+.tb-btn{
+  width:44px;height:44px;border:none;background:transparent;border-radius:8px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:#8a9bc0;transition:background .15s,color .15s;position:relative;flex-shrink:0;
+}
+.tb-btn:hover{background:#2e3650;color:#fff;}
+.tb-btn.active,
+.tb-btn.active:hover,
+.tb-btn.active:focus{
+  background:#7e22ce !important;
+  color:#fff !important;
+  box-shadow: inset 4px 0 0 #fde047, inset 0 0 0 2px #c99dff !important;
+  outline:none;
+}
+.tb-btn svg{pointer-events:none;}
+.tb-btn[title]:hover::after{
+  content:attr(title);position:absolute;left:52px;top:50%;transform:translateY(-50%);
+  background:#1e2433;color:#fff;font-size:11px;white-space:nowrap;padding:4px 8px;
+  border-radius:4px;border:1px solid #3a4560;z-index:100;pointer-events:none;
+}
+#tb-spacer{flex:1;}
+
+/* ── WORKSPACE ── */
+#workspace{display:flex;flex-direction:column;flex:1;overflow:hidden;}
+#topbar{
+  height:40px;background:#fff;border-bottom:1px solid #e0e4ed;
+  display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;
+}
+#project-name{font-size:13px;color:#555;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#zoom-display{font-size:12px;color:#888;font-variant-numeric:tabular-nums;min-width:48px;text-align:right;}
+.topbar-btn{
+  padding:4px 12px;font-size:12px;border-radius:5px;border:1.5px solid #dde0ea;
+  background:#f7f8fc;color:#333;cursor:pointer;font-weight:600;flex-shrink:0;
+}
+.topbar-btn:hover{background:#e8ecf7;border-color:#b0b8d4;}
+.topbar-btn.primary{background:#9b27af;color:white;border-color:#7b1fa2;}
+.topbar-btn.primary:hover{background:#7b1fa2;}
+
+#canvas-wrap{flex:1;overflow:hidden;position:relative;background:#4a5068;}
+#canvas{display:block;}
+#canvas.cur-select{cursor:default;}
+#canvas.cur-pan{cursor:grab;}
+#canvas.cur-panning{cursor:grabbing;}
+#canvas.cur-crosshair{cursor:crosshair;}
+
+/* ── INLINE EDITOR ── */
+#inline-editor{
+  display:none;position:fixed;z-index:200;background:white;
+  border:2px solid #9b27af;border-radius:5px;padding:3px 6px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.2);
+}
+#inline-input{border:none;outline:none;font-size:13px;font-family:'Segoe UI',Arial,sans-serif;min-width:110px;background:transparent;color:#1a1a2e;}
+
+/* ── STATUS BAR ── */
+#status{
+  height:22px;background:#1e2433;color:#6b7a99;font-size:11px;
+  display:flex;align-items:center;padding:0 12px;gap:16px;flex-shrink:0;
+}
+#status-tool{color:#c99dff;min-width:120px;}
+#status-hint{flex:1;}
+#status-brand{color:#8a9bc0;font-size:10px;letter-spacing:.3px;font-style:italic;opacity:.85;}
+
+/* ── HELP MODAL ── */
+#help-overlay{
+  display:none;position:fixed;inset:0;background:rgba(15,20,35,0.72);
+  z-index:500;align-items:center;justify-content:center;padding:32px;
+}
+#help-overlay.visible{display:flex;}
+#help-box{
+  background:#fff;max-width:720px;width:100%;max-height:90vh;overflow:auto;
+  border-radius:10px;padding:28px 32px;box-shadow:0 12px 48px rgba(0,0,0,0.4);
+  color:#222;line-height:1.5;font-size:14px;
+}
+#help-box h1{font-size:22px;color:#5b21b6;margin-bottom:4px;}
+#help-box h2{font-size:15px;color:#4c3190;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.6px;}
+#help-box p{margin-bottom:10px;}
+#help-box table{width:100%;border-collapse:collapse;margin:6px 0 4px;}
+#help-box td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle;font-size:13px;}
+#help-box td:first-child{font-weight:600;white-space:nowrap;color:#4c3190;width:38%;}
+#help-box td.tool-cell{display:flex;align-items:center;gap:10px;}
+#help-box td.tool-cell svg{flex-shrink:0;}
+#help-box .sub{font-size:11px;color:#777;margin-top:12px;border-top:1px solid #eee;padding-top:10px;}
+#help-close{
+  float:right;font-size:22px;line-height:1;background:none;border:none;
+  color:#888;cursor:pointer;margin:-8px -8px 0 0;
+}
+#help-close:hover{color:#222;}
+
+/* ── Donation modal ── */
+#donate-overlay{
+  display:none;position:fixed;inset:0;background:rgba(15,20,35,0.72);
+  z-index:600;align-items:center;justify-content:center;padding:32px;
+}
+#donate-overlay.visible{display:flex;}
+#donate-box{
+  background:#fff;max-width:440px;width:100%;border-radius:12px;
+  padding:32px 32px 26px;box-shadow:0 12px 48px rgba(0,0,0,0.4);
+  text-align:center;color:#222;line-height:1.5;position:relative;
+}
+#donate-box h2{font-size:19px;color:#5b21b6;margin:14px 0 8px;}
+#donate-box p{font-size:14px;color:#444;margin-bottom:14px;}
+#donate-box .bmc-btn{
+  display:inline-block;background:#ffdd00;color:#222;font-weight:700;
+  padding:12px 22px;border-radius:8px;text-decoration:none;font-size:15px;
+  border:1px solid #e8c900;box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  transition:transform .08s, box-shadow .12s;
+}
+#donate-box .bmc-btn:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,0.15);}
+#donate-box .later{
+  display:block;margin-top:14px;font-size:12px;color:#888;
+  background:none;border:none;cursor:pointer;text-decoration:underline;
+}
+#donate-box .later:hover{color:#555;}
+#donate-close{
+  position:absolute;top:10px;right:14px;font-size:22px;line-height:1;
+  background:none;border:none;color:#aaa;cursor:pointer;
+}
+#donate-close:hover{color:#333;}
+#donate-box .donate-logo{margin-bottom:6px;}
+#donate-box .attribution{font-size:11px;color:#999;margin-top:16px;border-top:1px solid #eee;padding-top:10px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <button class="tb-btn" id="btn-open" title="Open PDF">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+  </button>
+  <div class="tb-sep"></div>
+  <div class="tb-label">Nav</div>
+  <button class="tb-btn active" data-tool="select" title="Select &amp; Move">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4 0 L4 20 L9 15 L12 22 L15 21 L12 14 L18 14 Z"/>
+    </svg>
+  </button>
+  <div class="tb-sep"></div>
+  <div class="tb-label">Draw</div>
+  <button class="tb-btn" data-tool="boundary" title="Tested Boundary">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2.5" stroke-linejoin="round">
+      <polygon points="12,3 21,8 21,16 12,21 3,16 3,8"/>
+    </svg>
+  </button>
+  <button class="tb-btn" data-tool="fan" title="Blower Door Fan">
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <polyline points="3,8 8,12 3,16" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="3" y1="12" x2="21" y2="12" stroke="#f87171" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <button class="tb-btn" data-tool="extRef" title="Ext. Envelope Reference">
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <polyline points="3,16 8,12 3,8" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="3" y1="12" x2="18" y2="12" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="21,12 15,9 15,15" fill="#4ade80"/>
+    </svg>
+  </button>
+  <button class="tb-btn" data-tool="intRef" title="Int. Envelope Reference">
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <polyline points="3,16 8,12 3,8" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="3" y1="12" x2="18" y2="12" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round"/>
+      <polygon points="21,12 15,9 15,15" fill="#60a5fa"/>
+    </svg>
+  </button>
+  <button class="tb-btn" data-tool="seal" title="Temp Seal Area">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <ellipse cx="12" cy="12" rx="9" ry="7" stroke="#f87171" stroke-width="2" stroke-dasharray="3 2.5"/>
+      <text x="8.5" y="14" font-size="5.5" fill="#f87171" font-family="Arial" font-weight="bold">SEAL</text>
+    </svg>
+  </button>
+  <div class="tb-sep"></div>
+  <div class="tb-label">Place</div>
+  <button class="tb-btn" data-tool="manometer" title="Manometer">
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <rect x="2" y="4" width="20" height="16" rx="2" fill="#f3e5f5" stroke="#c084fc" stroke-width="2"/>
+      <rect x="2" y="4" width="20" height="6" rx="2" fill="#e9d5ff" stroke="none"/>
+      <line x1="2" y1="10" x2="22" y2="10" stroke="#c084fc" stroke-width="1.5"/>
+      <line x1="12" y1="10" x2="12" y2="20" stroke="#c084fc" stroke-width="1.5"/>
+      <text x="6" y="16" font-size="5" fill="#7e22ce" font-family="Arial" font-weight="bold">A</text>
+      <text x="15" y="16" font-size="5" fill="#7e22ce" font-family="Arial" font-weight="bold">B</text>
+    </svg>
+  </button>
+  <button class="tb-btn" data-tool="callout" title="Text Callout">
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <rect x="2" y="3" width="16" height="12" rx="3" fill="#fef9c3" stroke="#fbbf24" stroke-width="2"/>
+      <line x1="10" y1="15" x2="19" y2="20" stroke="#fbbf24" stroke-width="2"/>
+      <circle cx="19" cy="20" r="1.5" fill="#fbbf24"/>
+      <line x1="5" y1="7" x2="14" y2="7" stroke="#a16207" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="5" y1="10" x2="11" y2="10" stroke="#a16207" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <button class="tb-btn" data-tool="rfi" title="RFI / Issue Tag">
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <rect x="2" y="6" width="20" height="12" rx="3" fill="#ef4444"/>
+      <text x="12" y="15" font-size="8" fill="white" font-family="Arial" font-weight="bold" text-anchor="middle">RFI</text>
+    </svg>
+  </button>
+  <button class="tb-btn" data-tool="key" title="Place Key / Legend">
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <rect x="2" y="3" width="20" height="18" rx="2" fill="white" stroke="#444" stroke-width="1.8"/>
+      <line x1="2" y1="8" x2="22" y2="8" stroke="#444" stroke-width="1.5"/>
+      <text x="12" y="7" font-size="4" fill="#222" font-family="Arial" font-weight="bold" text-anchor="middle">KEY</text>
+      <line x1="5" y1="12" x2="10" y2="12" stroke="#9b27af" stroke-width="1.8"/>
+      <line x1="5" y1="16" x2="10" y2="16" stroke="#e53935" stroke-width="1.8"/>
+      <line x1="5" y1="20" x2="10" y2="20" stroke="#2e7d32" stroke-width="1.8"/>
+    </svg>
+  </button>
+  <div class="tb-sep"></div>
+  <div class="tb-label">Edit</div>
+  <button class="tb-btn" id="btn-undo" title="Undo (Ctrl+Z)">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M3 10h11a7 7 0 0 1 0 14H3"/><polyline points="7,6 3,10 7,14"/>
+    </svg>
+  </button>
+  <button class="tb-btn" id="btn-redo" title="Redo (Ctrl+Y)">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M21 10H10a7 7 0 0 0 0 14h11"/><polyline points="17,6 21,10 17,14"/>
+    </svg>
+  </button>
+  <button class="tb-btn" id="btn-delete" title="Delete Selected (Del)">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <polyline points="3,6 5,6 21,6"/>
+      <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+    </svg>
+  </button>
+  <div id="tb-spacer"></div>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="btn-export" title="Export PNG" style="background:#166534;color:#bbf7d0;border-radius:8px;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  </button>
+</div>
+
+<!-- WORKSPACE -->
+<div id="workspace">
+  <div id="topbar">
+    <svg width="24" height="24" viewBox="0 0 64 64" style="flex-shrink:0;margin-right:2px;" aria-label="Airtightness Test Planner"><defs><filter id="tb-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5"/></filter></defs><path d="M 10 30 L 32 10 L 54 30 L 54 54 L 10 54 Z" fill="#ff9800" filter="url(#tb-glow)" opacity=".9"/><path d="M 10 30 L 32 10 L 54 30 L 54 54 L 10 54 Z" fill="#ffffff"/><path d="M 10 30 L 32 10 L 54 30 L 54 54 L 10 54 Z" fill="#9b27af" fill-opacity="0.5" stroke="#5b21b6" stroke-width="2.5" stroke-linejoin="round"/></svg>
+    <button class="topbar-btn" id="topbar-open">Open PDF</button>
+    <span id="project-name">No file loaded — click Open PDF to begin</span>
+    <button class="topbar-btn" id="btn-undo2">Undo</button>
+    <button class="topbar-btn" id="btn-redo2">Redo</button>
+    <button class="topbar-btn" id="btn-rotate" title="Rotate PDF 90° clockwise">Rotate 90°</button>
+    <span id="page-nav" style="display:none;align-items:center;gap:4px;">
+      <button class="topbar-btn" id="btn-prev-page" title="Previous page (PageUp)">◀</button>
+      <span id="page-indicator" style="font-size:12px;color:#555;min-width:84px;text-align:center;">Page 1 / 1</span>
+      <button class="topbar-btn" id="btn-next-page" title="Next page (PageDown)">▶</button>
+    </span>
+    <button class="topbar-btn primary" id="topbar-export-png">Export PNG</button>
+    <button class="topbar-btn primary" id="topbar-export-pdf">Export PDF</button>
+    <button class="topbar-btn" id="btn-help" title="Help / About" style="font-weight:bold;min-width:32px;">?</button>
+    <span id="zoom-display">—</span>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div id="status">
+    <span id="status-tool">Select</span>
+    <span id="status-hint">Open a PDF to begin</span>
+    <span id="status-brand">Airtightness Test Planner — Developed by Green Mountain Enclosure Consulting LLC, Bristol, Vermont</span>
+  </div>
+</div>
+</div>
+
+<!-- Inline text editor -->
+<div id="inline-editor"><input id="inline-input" type="text" maxlength="40"></div>
+
+<!-- Help / About modal -->
+<div id="help-overlay">
+  <div id="help-box">
+    <button id="help-close" title="Close">&times;</button>
+    <h1 style="display:flex;align-items:center;gap:12px;"><svg width="36" height="36" viewBox="0 0 64 64" style="flex-shrink:0;" aria-hidden="true"><defs><filter id="hm-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5"/></filter></defs><path d="M 10 30 L 32 10 L 54 30 L 54 54 L 10 54 Z" fill="#ff9800" filter="url(#hm-glow)" opacity=".9"/><path d="M 10 30 L 32 10 L 54 30 L 54 54 L 10 54 Z" fill="#ffffff"/><path d="M 10 30 L 32 10 L 54 30 L 54 54 L 10 54 Z" fill="#9b27af" fill-opacity="0.5" stroke="#5b21b6" stroke-width="2.5" stroke-linejoin="round"/></svg><span>Airtightness Test Planner — Help &amp; About</span></h1>
+    <p>Airtightness Test Planner is a free, single-file tool for preparing whole-building airtightness test plans from construction PDFs. Open a PDF: mark up the tested boundary, blower-door locations, interior and exterior reference tubes, temporary seal locations, and any notes or RFIs, then export a clean plan as a PNG or PDF.</p>
+
+    <h2>Getting started</h2>
+    <p>Click <b>Open PDF</b> (or drop a file anywhere on the workspace). Multi-page PDFs load every page — use the <b>◀ ▶</b> arrows or PageUp/PageDown to move between them. Each page keeps its own annotations and undo history.</p>
+
+    <h2>Drawing tools (left toolbar)</h2>
+    <table>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#4c3190"><path d="M4 0 L4 20 L9 15 L12 22 L15 21 L12 14 L18 14 Z"/></svg>
+          Select &amp; Move
+        </td>
+        <td>Click to select; drag to reposition; double-click to edit text on manometers, callouts, and RFIs. Drag empty space to pan.</td>
+      </tr>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9b27af" stroke-width="2.5" stroke-linejoin="round"><polygon points="12,3 21,8 21,16 12,21 3,16 3,8"/></svg>
+          Tested Boundary
+        </td>
+        <td>Click to add a boundary around the pressurized volume. Return the line to the first point (or double-click) to close the polygon. Closed boundaries stay highlighted in orange.</td>
+      </tr>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24"><polyline points="3,8 8,12 3,16" fill="none" stroke="#e53935" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="3" y1="12" x2="21" y2="12" stroke="#e53935" stroke-width="2.5" stroke-linecap="round"/></svg>
+          Blower Door Fan
+        </td>
+        <td>Multi-point red line. Drag near a manometer port to snap to a channel.</td>
+      </tr>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24"><polyline points="3,16 8,12 3,8" fill="none" stroke="#2e7d32" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="3" y1="12" x2="21" y2="12" stroke="#2e7d32" stroke-width="2.5" stroke-linecap="round"/></svg>
+          Exterior Reference
+        </td>
+        <td>Green line indicating an exterior envelope reference tube.</td>
+      </tr>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24"><polyline points="3,16 8,12 3,8" fill="none" stroke="#1565c0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="3" y1="12" x2="18" y2="12" stroke="#1565c0" stroke-width="2.5" stroke-linecap="round"/><polygon points="21,12 15,9 15,15" fill="#1565c0"/></svg>
+          Interior Reference
+        </td>
+        <td>Blue line with arrowhead indicating an interior envelope reference tube.</td>
+      </tr>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="12" rx="9" ry="7" stroke="#e53935" stroke-width="2" stroke-dasharray="3 2.5"/><text x="8.5" y="14" font-size="5.5" fill="#e53935" font-family="Arial" font-weight="bold">SEAL</text></svg>
+          Temp Seal Area
+        </td>
+        <td>Click &amp; drag to draw a dashed ellipse marking a temporary seal (door, vent, damper, etc.).</td>
+      </tr>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" fill="#f3e5f5" stroke="#9b27af" stroke-width="2"/><rect x="2" y="4" width="20" height="6" rx="2" fill="#e9d5ff" stroke="none"/><line x1="2" y1="10" x2="22" y2="10" stroke="#9b27af" stroke-width="1.5"/><line x1="12" y1="10" x2="12" y2="20" stroke="#9b27af" stroke-width="1.5"/><text x="6" y="16" font-size="5" fill="#7e22ce" font-family="Arial" font-weight="bold">A</text><text x="15" y="16" font-size="5" fill="#7e22ce" font-family="Arial" font-weight="bold">B</text></svg>
+          Manometer
+        </td>
+        <td>Places a dual-channel unit with four ports (A-Input, A-Ref, B-Input, B-Ref). Enter its serial number. Connected lines follow the manometer when moved.</td>
+      </tr>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24"><rect x="2" y="3" width="16" height="12" rx="3" fill="#fef9c3" stroke="#fbbf24" stroke-width="2"/><line x1="10" y1="15" x2="19" y2="20" stroke="#fbbf24" stroke-width="2"/><circle cx="19" cy="20" r="1.5" fill="#fbbf24"/><line x1="5" y1="7" x2="14" y2="7" stroke="#a16207" stroke-width="1.5" stroke-linecap="round"/><line x1="5" y1="10" x2="11" y2="10" stroke="#a16207" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Text Callout
+        </td>
+        <td>Adds a yellow note with a leader line. Drag the dot to relocate the leader endpoint.</td>
+      </tr>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="3" fill="#ef4444"/><text x="12" y="15" font-size="8" fill="white" font-family="Arial" font-weight="bold" text-anchor="middle">RFI</text></svg>
+          RFI / Issue Tag
+        </td>
+        <td>Adds a red tag for open questions or field conditions that need clarification.</td>
+      </tr>
+      <tr>
+        <td class="tool-cell">
+          <svg width="22" height="22" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2" fill="white" stroke="#444" stroke-width="1.8"/><line x1="2" y1="8" x2="22" y2="8" stroke="#444" stroke-width="1.5"/><text x="12" y="7" font-size="4" fill="#222" font-family="Arial" font-weight="bold" text-anchor="middle">KEY</text><line x1="5" y1="12" x2="10" y2="12" stroke="#9b27af" stroke-width="1.8"/><line x1="5" y1="16" x2="10" y2="16" stroke="#e53935" stroke-width="1.8"/><line x1="5" y1="20" x2="10" y2="20" stroke="#2e7d32" stroke-width="1.8"/></svg>
+          Place Key / Legend
+        </td>
+        <td>Drops a KEY legend box onto the plan, auto-populated with the symbols you've used. Drag it to wherever fits best.</td>
+      </tr>
+    </table>
+
+    <h2>Keyboard shortcuts</h2>
+    <table>
+      <tr><td>Shift (hold)</td><td>Lock your in-progress drawing line to 0° / 90° from last point.</td></tr>
+      <tr><td>Space (hold)</td><td>Pan the view while dragging.</td></tr>
+      <tr><td>Scroll wheel</td><td>Zoom in / out, centered on the cursor.</td></tr>
+      <tr><td>Esc</td><td>Cancel an in-progress line or boundary.</td></tr>
+      <tr><td>Delete / Backspace</td><td>While drawing: remove the last point placed. Otherwise: delete the selected item.</td></tr>
+      <tr><td>Ctrl+Z / Ctrl+Y</td><td>Undo / Redo (per page).</td></tr>
+      <tr><td>PageUp / PageDown</td><td>Previous / next page.</td></tr>
+    </table>
+
+    <h2>Exporting</h2>
+    <p><b>Export PNG</b> saves the current page as a high-resolution image with the auto-generated KEY legend. <b>Export PDF</b> writes every page into a single PDF file, ready to share with the client, GC, or field crew.</p>
+
+    <h2>About</h2>
+    <p>Airtightness Test Planner was developed by <b>Green Mountain Enclosure Consulting LLC</b>. This app is designed for professional airtightness testers, building enclosure consultants, and commissioning agents. Your PDF never leaves your computer — all rendering and markup happens locally in the browser.</p>
+    <p>This tool is free. If it's saved you time, tips are welcome: <a href="#" id="help-donate-link" style="color:#9b27af;font-weight:600;text-decoration:none;">☕ Buy me a coffee</a>.</p>
+    <p class="sub">Manufacturer-neutral. Icons and line styling are conventions, not endorsements. Feedback &amp; feature requests are always welcome.</p>
+  </div>
+</div>
+
+<!-- Donation modal -->
+<div id="donate-overlay" role="dialog" aria-modal="true" aria-labelledby="donate-title">
+  <div id="donate-box">
+    <button id="donate-close" title="Close">&times;</button>
+    <svg class="donate-logo" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><defs><filter id="dm-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5"/></filter></defs><path d="M 10 30 L 32 10 L 54 30 L 54 54 L 10 54 Z" fill="#ff9800" filter="url(#dm-glow)" opacity=".9"/><path d="M 10 30 L 32 10 L 54 30 L 54 54 L 10 54 Z" fill="#ffffff"/><path d="M 10 30 L 32 10 L 54 30 L 54 54 L 10 54 Z" fill="#9b27af" fill-opacity="0.5" stroke="#5b21b6" stroke-width="2.5" stroke-linejoin="round"/></svg>
+    <h2 id="donate-title">Enjoying Airtightness Test Planner?</h2>
+    <p>This tool is free and ad-free, built and maintained on nights and weekends. If it's saved you time on a test plan, a small tip helps keep it that way — no subscriptions, just a one-time thank-you.</p>
+    <a id="donate-link" class="bmc-btn" href="#" target="_blank" rel="noopener noreferrer">☕ Buy me a coffee</a>
+    <button id="donate-later" class="later">Maybe later</button>
+    <div class="attribution">Green Mountain Enclosure Consulting LLC · Bristol, Vermont</div>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="file-input" accept=".pdf,image/png,image/jpeg" style="display:none">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+'use strict';
+
+// ─────────────────────────────────────────
+//  Attribution — please leave in place.
+//  Airtightness Test Planner is distributed free. The credit line is referenced
+//  by the status bar, PDF metadata, and console banner.
+//  Removing it does not disable the app — but please respect it if you share this file.
+// ─────────────────────────────────────────
+const ATP_APP    = 'Airtightness Test Planner';
+const ATP_OWNER  = 'Green Mountain Enclosure Consulting LLC';
+const ATP_CITY   = 'Bristol, Vermont';
+const ATP_CREDIT = ATP_APP + ' — Developed by ' + ATP_OWNER + ', ' + ATP_CITY;
+
+// ─────────────────────────────────────────
+//  Donation prompt — shown on first launch, then once every 90 days.
+//  Edit the URL below to your Buy Me A Coffee page (e.g. 'https://buymeacoffee.com/yourhandle')
+// ─────────────────────────────────────────
+const ATP_DONATION_URL  = 'https://buymeacoffee.com/airtightnesstestplanner';
+const ATP_DONATION_DAYS = 90;
+
+// Branded console banner.
+console.log('%c ' + ATP_APP + ' ', 'background:#9b27af;color:#fff;padding:3px 8px;border-radius:3px;font-weight:bold;font-size:12px');
+console.log('%cDeveloped by ' + ATP_OWNER + ', ' + ATP_CITY + '.', 'color:#555;font-size:11px');
+
+// Soft integrity check — logs a warning if the visible credit has been stripped.
+// Does not disable any functionality; legitimate local edits are fine.
+window.addEventListener('load', function(){
+  try {
+    const sb = document.getElementById('status-brand');
+    if(!sb || sb.textContent.indexOf(ATP_OWNER) === -1){
+      console.warn('Attribution to ' + ATP_OWNER + ' appears to have been removed from this copy of ' + ATP_APP + '. If you are redistributing this file, please restore the original credit.');
+    }
+  } catch(e) { /* non-fatal */ }
+});
+
+const pdfjsLib = window['pdfjs-dist/build/pdf'];
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ─────────────────────────────────────────
+//  CONFIG
+// ─────────────────────────────────────────
+const SNAP_R    = 14;   // snap radius in screen pixels
+const MANO_W    = 120;
+const MANO_H    =  72;
+const HIT_TOL   =   8;  // screen pixels for line/edge hit detection
+const MIN_SCALE = 0.03;
+const MAX_SCALE = 20;
+const PDF_RENDER_SCALE = 4.5;  // crisp at zoom for large plans
+
+// Manometer port offsets [fx, fy] as fractions of width/height
+const PORTS = {
+  aInput : [0.15, 0.82],
+  aRef   : [0.35, 0.82],
+  bInput : [0.63, 0.82],
+  bRef   : [0.82, 0.82],
+};
+
+const LINE_TOOLS = new Set(['fan','extRef','intRef']);
+
+const TOOL_HINTS = {
+  select    : 'Click to select · Drag to move · Double-click to edit text · Del to delete',
+  boundary  : 'Click to add vertices · Click first point or double-click to close · Esc to cancel',
+  fan       : 'Click to add points · Double-click to finish · Drag near a manometer port to snap',
+  extRef    : 'Click to add points · Double-click to finish · Drag near a port to snap',
+  intRef    : 'Click to add points · Double-click to finish · Drag near a port to snap',
+  seal      : 'Click & drag to draw temporary seal ellipse',
+  manometer : 'Click to place manometer · Enter serial number',
+  callout   : 'Click to place text callout · Drag the dot to reposition leader',
+  rfi       : 'Click to place RFI tag · Enter label',
+  key       : 'Click to place a KEY / legend box on the plan',
+};
+
+// ─────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────
+let pdfBitmap = null;
+let pdfW = 0, pdfH = 0;
+let scale = 1, offX = 0, offY = 0;
+
+// Multi-page: pageData[i] = {bitmap, w, h, annotations, connections, history, future}
+let pageData = [];
+let pageIdx  = -1;
+
+let tool = 'select';
+let annotations = [];
+let connections  = [];   // {lineId, ep:0|last, manoId, portKey}  — ep=0 means first point, ep=-1 means last
+let selected = null;
+
+// Polyline / boundary drawing state
+let drawing   = false;
+let drawPts   = [];          // accumulated points (PDF coords)
+let drawCur   = {x:0,y:0};  // cursor in PDF coords
+let snapTarget= null;        // {manoId, portKey, x, y} in PDF coords
+let startSnap = null;        // snap recorded at first point of a line tool
+
+// Seal drawing state
+let sealStart = null;
+
+// Drag state
+let dragging     = false;
+let dragAnn      = null;
+let dragOrigin   = null;    // PDF coords at drag start
+let dragSnapshot = null;    // deep copy of annotation at drag start
+let lineSnapshots= {};      // {id: {points:[...]}} for connected lines at manometer drag start
+let connSnapshot = null;
+let dragHandle   = -1;      // vertex index being dragged (-1 = full body drag)
+let dragLeader   = false;   // dragging callout leader dot
+
+// Pan state
+let panning  = false;
+let panStart = {x:0,y:0};
+let panOff   = {x:0,y:0};
+let spaceDown= false;
+let shiftDown= false;
+
+// Edge-pan (auto-scroll while drawing near canvas edge)
+let lastMouseScreen = {x:0, y:0};
+let edgePanVx = 0, edgePanVy = 0;
+
+// Inline editing
+let editingId    = null;
+let editingField = null;
+
+// History
+let history = [];
+let future  = [];
+
+// ─────────────────────────────────────────
+//  DOM REFS
+// ─────────────────────────────────────────
+const canvas      = document.getElementById('canvas');
+const ctx         = canvas.getContext('2d');
+const canvasWrap  = document.getElementById('canvas-wrap');
+const fileInput   = document.getElementById('file-input');
+const inlineEditor= document.getElementById('inline-editor');
+const inlineInput = document.getElementById('inline-input');
+const zoomDisplay = document.getElementById('zoom-display');
+const projectName = document.getElementById('project-name');
+const statusTool  = document.getElementById('status-tool');
+const statusHint  = document.getElementById('status-hint');
+
+// ─────────────────────────────────────────
+//  UTILS
+// ─────────────────────────────────────────
+let _uid = 0;
+function uid() { return 'a'+(++_uid); }
+
+function snapshot() { return JSON.stringify({annotations, connections}); }
+function restore(s) {
+  const d=JSON.parse(s);
+  annotations=d.annotations;
+  connections=d.connections;
+  if(pageIdx>=0 && pageData[pageIdx]){
+    pageData[pageIdx].annotations = annotations;
+    pageData[pageIdx].connections = connections;
+  }
+}
+
+function saveHistory() {
+  history.push(snapshot());
+  if(history.length>80) history.shift();
+  future=[];
+}
+function undo() {
+  if(!history.length) return;
+  future.push(snapshot());
+  restore(history.pop());
+  if(!annotations.find(a=>a.id===selected)) selected=null;
+  render();
+}
+function redo() {
+  if(!future.length) return;
+  history.push(snapshot());
+  restore(future.pop());
+  render();
+}
+
+// ─────────────────────────────────────────
+//  COORDINATE TRANSFORMS
+// ─────────────────────────────────────────
+function toPDF(cx,cy)    { return {x:cx/scale+offX, y:cy/scale+offY}; }
+function toCanvas(px,py) { return {x:(px-offX)*scale, y:(py-offY)*scale}; }
+
+function setZoom(newScale, cx, cy) {
+  newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
+  const px=cx/scale+offX, py=cy/scale+offY;
+  scale=newScale;
+  offX=px-cx/scale; offY=py-cy/scale;
+  zoomDisplay.textContent = Math.round(scale*100)+'%';
+}
+function fitToWindow() {
+  if(!pdfW||!pdfH) return;
+  const cw=canvas.width, ch=canvas.height;
+  const s=Math.min((cw-40)/pdfW,(ch-40)/pdfH);
+  scale=s;
+  offX=-(cw/scale-pdfW)/2;
+  offY=-(ch/scale-pdfH)/2;
+  zoomDisplay.textContent=Math.round(scale*100)+'%';
+}
+
+// ─────────────────────────────────────────
+//  MANOMETER PORTS
+// ─────────────────────────────────────────
+function getPort(mano, portKey) {
+  const [fx,fy]=PORTS[portKey];
+  return {x:mano.x+fx*mano.w, y:mano.y+fy*mano.h};
+}
+function getAllPorts() {
+  const r=[];
+  for(const a of annotations) {
+    if(a.type!=='manometer') continue;
+    for(const pk of Object.keys(PORTS)) {
+      const pt=getPort(a,pk);
+      r.push({manoId:a.id, portKey:pk, x:pt.x, y:pt.y});
+    }
+  }
+  return r;
+}
+// Axis-snap (Shift): lock point to 0° or 90° from previous vertex
+function axisSnap(pt, anchor){
+  if(!anchor) return pt;
+  const dx=pt.x-anchor.x, dy=pt.y-anchor.y;
+  return Math.abs(dx)>=Math.abs(dy) ? {x:pt.x, y:anchor.y} : {x:anchor.x, y:pt.y};
+}
+function findSnap(pdfX,pdfY) {
+  const rPDF=SNAP_R/scale;
+  let best=null, bestD=rPDF;
+  for(const p of getAllPorts()) {
+    const d=Math.hypot(p.x-pdfX,p.y-pdfY);
+    if(d<bestD){ bestD=d; best=p; }
+  }
+  return best;
+}
+
+// ─────────────────────────────────────────
+//  ANNOTATION FACTORIES
+// ─────────────────────────────────────────
+function mkPolyline(type, points) {
+  return {id:uid(), type, points:points.map(p=>({...p}))};
+}
+function mkBoundary(points) {
+  return {id:uid(), type:'boundary', points:points.map(p=>({...p}))};
+}
+function mkSeal(cx,cy,rx,ry) {
+  return {id:uid(), type:'seal', cx, cy, rx:Math.abs(rx)||4, ry:Math.abs(ry)||4};
+}
+function mkManometer(x,y,serial) {
+  return {id:uid(), type:'manometer', x, y, w:MANO_W, h:MANO_H, serial:serial||''};
+}
+function mkCallout(x,y,text,lx,ly) {
+  const w=130,h=42;
+  return {id:uid(), type:'callout', x, y, w, h, text:text||'Note', lx:lx??x+w/2, ly:ly??y+h+50};
+}
+function mkRFI(x,y,label) {
+  return {id:uid(), type:'rfi', x, y, label:label||'RFI'};
+}
+function mkKey(x,y) {
+  return {id:uid(), type:'key', x, y, w:480, h:0};  // h computed at render
+}
+
+// Computed key contents (which items to show, based on current annotations)
+function getKeyItems(){
+  const types=new Set(annotations.filter(a=>a.type!=='key').map(a=>a.type));
+  const items=[];
+  if(types.has('boundary'))  items.push({style:'line',color:'#9b27af',w:3.5, label:'Tested Boundary'});
+  if(types.has('fan'))       items.push({style:'line',color:'#e53935',w:3.5, label:'Blower Door Fan'});
+  if(types.has('extRef'))    items.push({style:'line',color:'#2e7d32',w:3.5, label:'Envelope Reference (Ext)'});
+  if(types.has('intRef'))    items.push({style:'line',color:'#1565c0',w:3.5, label:'Envelope Reference (Int)',arrow:true});
+  if(types.has('seal'))      items.push({style:'dashed',color:'#e53935',w:2, label:'Temporary Seal Area'});
+  if(types.has('manometer')) items.push({style:'box',  color:'#9b27af',fill:'#f3e5f5',label:'Manometer'});
+  if(types.has('callout'))   items.push({style:'box',  color:'#f9a825',fill:'#fff9c4',label:'Text Callout'});
+  if(types.has('rfi'))       items.push({style:'badge',color:'#e53935',       label:'RFI / Issue Tag'});
+  return items;
+}
+// Key dimensions in PDF pixels (not scaled by zoom)
+const KEY_HDR=48, KEY_ROW=34, KEY_PAD=14;
+function getKeyHeight(a){
+  const items=getKeyItems();
+  return KEY_HDR + Math.max(items.length,1)*KEY_ROW + KEY_PAD;
+}
+
+// ─────────────────────────────────────────
+//  GEOMETRY
+// ─────────────────────────────────────────
+function ptSegDist(px,py,ax,ay,bx,by) {
+  const dx=bx-ax, dy=by-ay, lenSq=dx*dx+dy*dy;
+  if(lenSq===0) return Math.hypot(px-ax,py-ay);
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/lenSq));
+  return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+}
+function ptNearPolyline(px,py,pts,closed,tol) {
+  if(!pts||pts.length<2) return false;
+  for(let i=0;i<pts.length-1;i++) {
+    if(ptSegDist(px,py,pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y)<tol) return true;
+  }
+  if(closed&&pts.length>2) {
+    const n=pts.length;
+    if(ptSegDist(px,py,pts[n-1].x,pts[n-1].y,pts[0].x,pts[0].y)<tol) return true;
+  }
+  return false;
+}
+function ptInRect(px,py,rx,ry,rw,rh){return px>=rx&&px<=rx+rw&&py>=ry&&py<=ry+rh;}
+
+function getBBox(a) {
+  switch(a.type){
+    case 'boundary':
+    case 'fan': case 'extRef': case 'intRef': {
+      if(!a.points||!a.points.length) return {x:0,y:0,w:1,h:1};
+      let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+      for(const p of a.points){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y);}
+      return {x:x0,y:y0,w:Math.max(x1-x0,1),h:Math.max(y1-y0,1)};
+    }
+    case 'seal':      return {x:a.cx-a.rx,y:a.cy-a.ry,w:a.rx*2,h:a.ry*2};
+    case 'manometer': return {x:a.x,y:a.y,w:a.w,h:a.h};
+    case 'callout':   return {x:a.x,y:a.y,w:a.w,h:a.h};
+    case 'rfi':       return {x:a.x-35/scale,y:a.y-12/scale,w:70/scale,h:24/scale};
+    case 'key':       return {x:a.x,y:a.y,w:a.w,h:getKeyHeight(a)};
+    default:          return {x:0,y:0,w:1,h:1};
+  }
+}
+
+// ─────────────────────────────────────────
+//  HIT TESTING
+// ─────────────────────────────────────────
+function hitTest(a, px, py) {
+  const t=HIT_TOL/scale;
+  switch(a.type){
+    case 'boundary':
+      return ptNearPolyline(px,py,a.points,true,t);
+    case 'fan': case 'extRef': case 'intRef':
+      return ptNearPolyline(px,py,a.points,false,t);
+    case 'seal': {
+      const nx=(px-a.cx)/a.rx, ny=(py-a.cy)/a.ry, d=Math.sqrt(nx*nx+ny*ny);
+      return Math.abs(d-1)<t/Math.min(a.rx,a.ry);
+    }
+    case 'manometer': return ptInRect(px,py,a.x,a.y,a.w,a.h);
+    case 'callout':   return ptInRect(px,py,a.x,a.y,a.w,a.h)||
+                             ptSegDist(px,py,a.x+a.w/2,a.y+a.h,a.lx,a.ly)<t;
+    case 'rfi':       return Math.hypot(px-a.x,py-a.y)<22/scale;
+    case 'key':       return ptInRect(px,py,a.x,a.y,a.w,getKeyHeight(a));
+  }
+  return false;
+}
+function findHit(px,py) {
+  for(let i=annotations.length-1;i>=0;i--){
+    if(hitTest(annotations[i],px,py)) return annotations[i];
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────
+//  CANVAS HELPERS
+// ─────────────────────────────────────────
+function roundRect(ctx,x,y,w,h,r){
+  if(typeof r==='number') r=[r,r,r,r];
+  const [tl,tr,br,bl]=r;
+  ctx.beginPath();
+  ctx.moveTo(x+tl,y);
+  ctx.lineTo(x+w-tr,y); ctx.arcTo(x+w,y,x+w,y+tr,tr);
+  ctx.lineTo(x+w,y+h-br); ctx.arcTo(x+w,y+h,x+w-br,y+h,br);
+  ctx.lineTo(x+bl,y+h); ctx.arcTo(x,y+h,x,y+h-bl,bl);
+  ctx.lineTo(x,y+tl); ctx.arcTo(x,y,x+tl,y,tl);
+  ctx.closePath();
+}
+
+function drawArrowhead(ctx,x1,y1,x2,y2,color,w){
+  const angle=Math.atan2(y2-y1,x2-x1), len=14/scale;
+  ctx.save();
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-len*Math.cos(angle-0.42),y2-len*Math.sin(angle-0.42));
+  ctx.lineTo(x2-len*Math.cos(angle+0.42),y2-len*Math.sin(angle+0.42));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function wrapText(ctx,text,maxW,x,y,lineH){
+  if(!text) return;
+  const words=text.split(' ');
+  let line='', cy=y;
+  for(const word of words){
+    const test=line?line+' '+word:word;
+    if(ctx.measureText(test).width>maxW&&line){ctx.fillText(line,x,cy);cy+=lineH;line=word;}
+    else line=test;
+  }
+  if(line) ctx.fillText(line,x,cy);
+}
+
+// ─────────────────────────────────────────
+//  DRAW ANNOTATIONS
+// ─────────────────────────────────────────
+function selGlow(ctx,sel){
+  if(sel){ctx.shadowColor='#ff9800';ctx.shadowBlur=10/scale;}
+}
+
+function drawBoundary(ctx,a,sel){
+  if(!a.points||a.points.length<2) return;
+  ctx.save();
+  ctx.strokeStyle='#9b27af'; ctx.lineWidth=3.5/scale; ctx.lineJoin='round'; ctx.lineCap='round';
+  // Always-on orange glow so closed boundaries stay visible; stronger when selected
+  ctx.shadowColor='#ff9800';
+  ctx.shadowBlur= sel ? 14/scale : 6/scale;
+  ctx.beginPath();
+  ctx.moveTo(a.points[0].x,a.points[0].y);
+  for(let i=1;i<a.points.length;i++) ctx.lineTo(a.points[i].x,a.points[i].y);
+  ctx.closePath(); ctx.stroke();
+  // Second pass to intensify glow without thickening the line
+  if(!sel){
+    ctx.shadowBlur=4/scale;
+    ctx.stroke();
+  }
+  if(sel){
+    ctx.shadowBlur=0; ctx.fillStyle='#ff9800';
+    for(const p of a.points){ctx.beginPath();ctx.arc(p.x,p.y,5/scale,0,Math.PI*2);ctx.fill();}
+  }
+  ctx.restore();
+}
+
+function drawPolyline(ctx,a,sel){
+  if(!a.points||a.points.length<2) return;
+  const colors={fan:'#e53935',extRef:'#2e7d32',intRef:'#1565c0'};
+  const widths ={fan:3.5,extRef:3.5,intRef:3.5};
+  const c=colors[a.type], lw=widths[a.type];
+  ctx.save();
+  ctx.strokeStyle=c; ctx.lineWidth=lw/scale; ctx.lineCap='round'; ctx.lineJoin='round';
+  selGlow(ctx,sel);
+  ctx.beginPath();
+  ctx.moveTo(a.points[0].x,a.points[0].y);
+  for(let i=1;i<a.points.length;i++) ctx.lineTo(a.points[i].x,a.points[i].y);
+  ctx.stroke();
+  // Arrowhead at end for interior reference lines only
+  if(a.type==='intRef'&&a.points.length>=2){
+    const n=a.points.length;
+    drawArrowhead(ctx,a.points[n-2].x,a.points[n-2].y,a.points[n-1].x,a.points[n-1].y,c,lw);
+  }
+  if(sel){
+    ctx.shadowBlur=0; ctx.fillStyle='#ff9800';
+    for(const p of a.points){ctx.beginPath();ctx.arc(p.x,p.y,5/scale,0,Math.PI*2);ctx.fill();}
+  }
+  ctx.restore();
+}
+
+function drawSeal(ctx,a,sel){
+  ctx.save();
+  ctx.strokeStyle='#e53935'; ctx.lineWidth=2.2/scale;
+  ctx.setLineDash([6/scale,4/scale]);
+  selGlow(ctx,sel);
+  ctx.beginPath(); ctx.ellipse(a.cx,a.cy,a.rx,a.ry,0,0,Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawManometer(ctx,a,sel){
+  const {x,y,w,h,serial}=a;
+  ctx.save();
+  selGlow(ctx,sel);
+  ctx.fillStyle='#f3e5f5'; ctx.strokeStyle='#9b27af'; ctx.lineWidth=2.5/scale;
+  roundRect(ctx,x,y,w,h,3/scale); ctx.fill(); ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#e1bee7';
+  roundRect(ctx,x,y,w,h*0.28,[3/scale,3/scale,0,0]); ctx.fill();
+  ctx.strokeStyle='#9b27af'; ctx.lineWidth=1.5/scale;
+  ctx.beginPath(); ctx.moveTo(x,y+h*0.28); ctx.lineTo(x+w,y+h*0.28); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w*0.5,y+h*0.28); ctx.lineTo(x+w*0.5,y+h); ctx.stroke();
+  ctx.fillStyle='#4a148c'; ctx.font=`bold ${11/scale}px Arial`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(serial||'——————',x+w/2,y+h*0.15);
+  ctx.font=`bold ${13/scale}px Arial`;
+  ctx.fillText('A',x+w*0.25,y+h*0.54);
+  ctx.fillText('B',x+w*0.75,y+h*0.54);
+  // Port circles
+  ctx.fillStyle='white'; ctx.strokeStyle='#9b27af'; ctx.lineWidth=1.5/scale;
+  for(const pk of Object.keys(PORTS)){
+    const pt=getPort(a,pk);
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,5/scale,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawCallout(ctx,a,sel){
+  ctx.save();
+  selGlow(ctx,sel);
+  ctx.strokeStyle='#f9a825'; ctx.lineWidth=2/scale; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(a.x+a.w/2,a.y+a.h); ctx.lineTo(a.lx,a.ly); ctx.stroke();
+  ctx.fillStyle='#f9a825';
+  ctx.beginPath(); ctx.arc(a.lx,a.ly,5/scale,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#fff9c4'; ctx.strokeStyle='#f9a825'; ctx.lineWidth=2/scale;
+  roundRect(ctx,a.x,a.y,a.w,a.h,4/scale); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#5d4037'; ctx.font=`${11/scale}px Arial`;
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  wrapText(ctx,a.text,a.w-10/scale,a.x+5/scale,a.y+5/scale,14/scale);
+  ctx.restore();
+}
+
+function drawRFI(ctx,a,sel){
+  ctx.save();
+  selGlow(ctx,sel);
+  const fw=70/scale, fh=22/scale, rx=a.x-fw/2, ry=a.y-fh/2;
+  ctx.fillStyle='#e53935';
+  roundRect(ctx,rx,ry,fw,fh,4/scale); ctx.fill();
+  ctx.fillStyle='white'; ctx.font=`bold ${11/scale}px Arial`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(a.label,a.x,a.y);
+  ctx.restore();
+}
+
+function drawKey(ctx,a,sel){
+  const items=getKeyItems();
+  const h=getKeyHeight(a);
+  ctx.save();
+  selGlow(ctx,sel);
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.18)';
+  ctx.fillRect(a.x+6,a.y+6,a.w,h);
+  ctx.shadowBlur=0;
+  // Box
+  ctx.fillStyle='#ffffff';
+  ctx.strokeStyle='#222'; ctx.lineWidth=2.2/scale;
+  if(sel){ ctx.shadowColor='#ff9800'; ctx.shadowBlur=10/scale; }
+  ctx.fillRect(a.x,a.y,a.w,h);
+  ctx.strokeRect(a.x,a.y,a.w,h);
+  ctx.shadowBlur=0;
+  // Header divider
+  ctx.beginPath(); ctx.moveTo(a.x,a.y+KEY_HDR); ctx.lineTo(a.x+a.w,a.y+KEY_HDR); ctx.stroke();
+  // Title
+  ctx.fillStyle='#000'; ctx.font=`bold 22px Arial`;
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText('KEY:', a.x+18, a.y+KEY_HDR/2);
+
+  if(!items.length){
+    ctx.fillStyle='#888'; ctx.font=`italic 14px Arial`;
+    ctx.textBaseline='middle';
+    ctx.fillText('(place annotations to populate)', a.x+18, a.y+KEY_HDR+KEY_ROW/2);
+    ctx.restore(); return;
+  }
+
+  items.forEach((item,i)=>{
+    const iy=a.y+KEY_HDR+(i+0.5)*KEY_ROW;
+    const sx=a.x+18, ex=a.x+78;
+    if(item.style==='line'||item.style==='dashed'){
+      ctx.strokeStyle=item.color; ctx.lineWidth=item.w; ctx.lineCap='round';
+      if(item.style==='dashed') ctx.setLineDash([7,4]);
+      // Tested boundary entry: add the signature orange glow
+      if(item.label==='Tested Boundary'){ ctx.shadowColor='#ff9800'; ctx.shadowBlur=10; }
+      ctx.beginPath(); ctx.moveTo(sx,iy); ctx.lineTo(ex,iy); ctx.stroke();
+      ctx.shadowBlur=0;
+      ctx.setLineDash([]); ctx.lineCap='butt';
+      if(item.arrow){
+        ctx.fillStyle=item.color; ctx.beginPath();
+        ctx.moveTo(ex,iy); ctx.lineTo(ex-12,iy-5); ctx.lineTo(ex-12,iy+5); ctx.closePath(); ctx.fill();
+      }
+    } else if(item.style==='box'){
+      ctx.fillStyle=item.fill; ctx.strokeStyle=item.color; ctx.lineWidth=2;
+      ctx.fillRect(sx,iy-11,60,22); ctx.strokeRect(sx,iy-11,60,22);
+      ctx.fillStyle=item.color; ctx.font=`bold 10px Arial`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(item.label==='Manometer'?'DG-1000':'Note',sx+30,iy);
+    } else if(item.style==='badge'){
+      ctx.fillStyle=item.color;
+      roundRect(ctx,sx,iy-11,60,22,4); ctx.fill();
+      ctx.fillStyle='white'; ctx.font=`bold 11px Arial`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('RFI',sx+30,iy);
+    }
+    ctx.fillStyle='#000'; ctx.font=`bold 15px Arial`;
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText('=  '+item.label, a.x+92, iy);
+  });
+  ctx.restore();
+}
+
+function drawAnnotation(ctx,a,sel){
+  switch(a.type){
+    case 'boundary':  drawBoundary(ctx,a,sel); break;
+    case 'fan': case 'extRef': case 'intRef': drawPolyline(ctx,a,sel); break;
+    case 'seal':      drawSeal(ctx,a,sel); break;
+    case 'manometer': drawManometer(ctx,a,sel); break;
+    case 'callout':   drawCallout(ctx,a,sel); break;
+    case 'rfi':       drawRFI(ctx,a,sel); break;
+    case 'key':       drawKey(ctx,a,sel); break;
+  }
+}
+
+// ─────────────────────────────────────────
+//  DRAWING PREVIEW
+// ─────────────────────────────────────────
+function drawPreview(ctx){
+  if(!drawing) return;
+  const isBoundary = tool==='boundary';
+  const isLine     = LINE_TOOLS.has(tool);
+  if(!isBoundary&&!isLine&&tool!=='seal') return;
+
+  ctx.save();
+  ctx.globalAlpha=0.7;
+
+  if(isBoundary||isLine){
+    const colors={boundary:'#9b27af',fan:'#e53935',extRef:'#2e7d32',intRef:'#1565c0'};
+    const widths ={boundary:3.5,fan:3.5,extRef:3.5,intRef:3.5};
+    const c=colors[tool], lw=widths[tool];
+    if(drawPts.length>0){
+      ctx.strokeStyle=c; ctx.lineWidth=lw/scale; ctx.lineCap='round'; ctx.lineJoin='round';
+      ctx.setLineDash([8/scale,5/scale]);
+      ctx.beginPath();
+      ctx.moveTo(drawPts[0].x,drawPts[0].y);
+      for(let i=1;i<drawPts.length;i++) ctx.lineTo(drawPts[i].x,drawPts[i].y);
+      const ex=snapTarget?snapTarget.x:drawCur.x;
+      const ey=snapTarget?snapTarget.y:drawCur.y;
+      ctx.lineTo(ex,ey);
+      ctx.stroke(); ctx.setLineDash([]);
+
+      // For boundary: show closing snap indicator
+      if(isBoundary&&drawPts.length>2){
+        const fc=toCanvas(drawPts[0].x,drawPts[0].y);
+        const curC=toCanvas(drawCur.x,drawCur.y);
+        if(Math.hypot(curC.x-fc.x,curC.y-fc.y)<SNAP_R){
+          ctx.globalAlpha=1; ctx.strokeStyle=c; ctx.lineWidth=2/scale;
+          ctx.beginPath(); ctx.arc(drawPts[0].x,drawPts[0].y,8/scale,0,Math.PI*2); ctx.stroke();
+        }
+      }
+      // Vertex dots
+      ctx.globalAlpha=1; ctx.fillStyle=c;
+      for(const p of drawPts){ctx.beginPath();ctx.arc(p.x,p.y,3.5/scale,0,Math.PI*2);ctx.fill();}
+    }
+  }
+
+  if(tool==='seal'&&sealStart){
+    const rx=Math.abs(drawCur.x-sealStart.x)/2||2, ry=Math.abs(drawCur.y-sealStart.y)/2||2;
+    const cx=sealStart.x+(drawCur.x-sealStart.x)/2, cy=sealStart.y+(drawCur.y-sealStart.y)/2;
+    ctx.strokeStyle='#e53935'; ctx.lineWidth=2.2/scale;
+    ctx.setLineDash([6/scale,4/scale]);
+    ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────
+//  MAIN RENDER
+// ─────────────────────────────────────────
+function render(){
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#4a5068'; ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.setTransform(scale,0,0,scale,-offX*scale,-offY*scale);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  if(pdfBitmap) ctx.drawImage(pdfBitmap,0,0);
+  else{ ctx.fillStyle='#fff'; ctx.fillRect(0,0,pdfW||800,pdfH||600); }
+
+  for(const a of annotations) drawAnnotation(ctx,a,a.id===selected);
+  drawPreview(ctx);
+
+  // Snap glow
+  if(snapTarget){
+    const r=SNAP_R*0.9/scale;
+    ctx.strokeStyle='#00e5ff'; ctx.lineWidth=2/scale;
+    ctx.shadowColor='#00e5ff'; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(snapTarget.x,snapTarget.y,r,0,Math.PI*2); ctx.stroke();
+    ctx.shadowBlur=0;
+  }
+
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────
+//  COMMIT HELPERS
+// ─────────────────────────────────────────
+function commitBoundary(){
+  if(drawPts.length>=3){
+    saveHistory();
+    const a=mkBoundary(drawPts);
+    annotations.push(a); selected=a.id;
+  }
+  drawing=false; drawPts=[]; startSnap=null; render();
+  setTool('select');
+}
+
+function commitPolyline(){
+  // Remove duplicate last point (from double-click second mousedown)
+  if(drawPts.length>1){
+    const n=drawPts.length;
+    const last=drawPts[n-1], prev=drawPts[n-2];
+    if(Math.hypot(last.x-prev.x,last.y-prev.y)<3/scale) drawPts.pop();
+  }
+  if(drawPts.length>=2){
+    saveHistory();
+    const a=mkPolyline(tool,drawPts);
+    if(startSnap)
+      connections.push({lineId:a.id,ep:0,manoId:startSnap.manoId,portKey:startSnap.portKey});
+    annotations.push(a); selected=a.id;
+  }
+  drawing=false; drawPts=[]; startSnap=null; snapTarget=null; render();
+  setTool('select');
+}
+
+function cancelDrawing(){
+  drawing=false; drawPts=[]; sealStart=null; snapTarget=null; startSnap=null;
+  render();
+}
+
+// ─────────────────────────────────────────
+//  TOOL SELECTION
+// ─────────────────────────────────────────
+function setTool(t){
+  tool=t;
+  cancelDrawing();
+  document.querySelectorAll('.tb-btn[data-tool]').forEach(b=>{
+    b.classList.toggle('active',b.dataset.tool===t);
+  });
+  const names={select:'Select',boundary:'Tested Boundary',fan:'Blower Door Fan',
+    extRef:'Ext. Envelope Ref',intRef:'Int. Envelope Ref',seal:'Temp Seal',
+    manometer:'Manometer',callout:'Text Callout',rfi:'RFI Tag',key:'Place Key'};
+  statusTool.textContent=names[t]||t;
+  statusHint.textContent=TOOL_HINTS[t]||'';
+  canvas.className= t==='select'?'cur-select':'cur-crosshair';
+  render();
+}
+
+// ─────────────────────────────────────────
+//  INLINE EDITOR
+// ─────────────────────────────────────────
+function openEditor(annId,field,canvasX,canvasY,val){
+  editingId=annId; editingField=field;
+  inlineInput.value=val;
+  const cr=canvas.getBoundingClientRect();
+  inlineEditor.style.left=(cr.left+canvasX)+'px';
+  inlineEditor.style.top =(cr.top+canvasY-22)+'px';
+  inlineEditor.style.display='block';
+  inlineInput.focus(); inlineInput.select();
+}
+function closeEditor(commit){
+  if(!editingId) return;
+  if(commit){
+    const a=annotations.find(x=>x.id===editingId);
+    if(a){
+      saveHistory();
+      if(editingField==='serial') a.serial=inlineInput.value;
+      if(editingField==='text')   a.text  =inlineInput.value;
+      if(editingField==='label')  a.label =inlineInput.value;
+    }
+  }
+  inlineEditor.style.display='none';
+  editingId=null; editingField=null;
+  render();
+}
+inlineInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter') {closeEditor(true);e.preventDefault();}
+  if(e.key==='Escape'){closeEditor(false);e.preventDefault();}
+});
+inlineInput.addEventListener('blur',()=>closeEditor(true));
+
+// ─────────────────────────────────────────
+//  DELETE
+// ─────────────────────────────────────────
+function deleteSelected(){
+  if(!selected) return;
+  saveHistory();
+  annotations=annotations.filter(a=>a.id!==selected);
+  connections=connections.filter(c=>c.lineId!==selected&&c.manoId!==selected);
+  selected=null; render();
+}
+
+// ─────────────────────────────────────────
+//  MOUSE EVENTS
+// ─────────────────────────────────────────
+function getEvtPDF(e){ const r=canvas.getBoundingClientRect(); return toPDF(e.clientX-r.left,e.clientY-r.top); }
+function getEvtCanvas(e){ const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+
+canvas.addEventListener('mousedown', onMouseDown);
+canvas.addEventListener('mousemove', onMouseMove);
+canvas.addEventListener('mouseup',   onMouseUp);
+canvas.addEventListener('dblclick',  onDblClick);
+canvas.addEventListener('wheel',     onWheel,{passive:false});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+function onMouseDown(e){
+  e.preventDefault();
+  closeEditor(true);
+  const cv=getEvtCanvas(e);
+  const pt=toPDF(cv.x,cv.y);
+
+  // ── PAN ──
+  if(e.button===1||(spaceDown&&e.button===0)){
+    panning=true; panStart={x:e.clientX,y:e.clientY}; panOff={x:offX,y:offY};
+    canvas.classList.add('cur-panning'); return;
+  }
+  if(e.button!==0) return;
+
+  // ── SELECT ──
+  if(tool==='select'){
+    // Callout leader dot?
+    for(const a of [...annotations].reverse()){
+      if(a.type!=='callout') continue;
+      const lc=toCanvas(a.lx,a.ly);
+      if(Math.hypot(cv.x-lc.x,cv.y-lc.y)<8){
+        dragLeader=true; dragAnn=a; dragOrigin=pt; return;
+      }
+    }
+    // Vertex handle on selected annotation?
+    if(selected){
+      const sa=annotations.find(a=>a.id===selected);
+      if(sa&&sa.points){
+        for(let i=0;i<sa.points.length;i++){
+          const pc=toCanvas(sa.points[i].x,sa.points[i].y);
+          if(Math.hypot(cv.x-pc.x,cv.y-pc.y)<7){
+            saveHistory();
+            dragHandle=i; dragAnn=sa; dragOrigin=pt; return;
+          }
+        }
+      }
+    }
+    // Body hit
+    const hit=findHit(pt.x,pt.y);
+    if(hit){
+      selected=hit.id;
+      // Snapshot connected line positions if this is a manometer
+      lineSnapshots={};
+      if(hit.type==='manometer'){
+        const connectedIds=[...new Set(connections.filter(c=>c.manoId===hit.id).map(c=>c.lineId))];
+        for(const lid of connectedIds){
+          const line=annotations.find(a=>a.id===lid);
+          if(line&&line.points) lineSnapshots[lid]={points:line.points.map(p=>({...p}))};
+        }
+        connSnapshot=JSON.parse(JSON.stringify(connections));
+      }
+      dragging=true; dragAnn=hit; dragOrigin=pt;
+      dragSnapshot=JSON.parse(JSON.stringify(hit));
+      saveHistory();
+      render(); return;
+    }
+    selected=null;
+    // No annotation hit — start panning on drag
+    panning=true; panStart={x:e.clientX,y:e.clientY}; panOff={x:offX,y:offY};
+    canvas.classList.add('cur-panning');
+    return;
+  }
+
+  // ── BOUNDARY & POLYLINE TOOLS (shared click-to-add-point logic) ──
+  if(tool==='boundary'||LINE_TOOLS.has(tool)){
+    if(!drawing){
+      drawing=true;
+      // Snap first point for line tools
+      const snap=LINE_TOOLS.has(tool)?findSnap(pt.x,pt.y):null;
+      startSnap=snap||null;
+      drawPts=[snap?{x:snap.x,y:snap.y}:{...pt}];
+    } else {
+      // Boundary: check if clicking near first point to close
+      if(tool==='boundary'&&drawPts.length>2){
+        const fc=toCanvas(drawPts[0].x,drawPts[0].y);
+        if(Math.hypot(cv.x-fc.x,cv.y-fc.y)<SNAP_R){ commitBoundary(); return; }
+      }
+      // Add new point (port snap for line tools; shift = 90° axis snap)
+      const portSnap=LINE_TOOLS.has(tool)?findSnap(pt.x,pt.y):null;
+      let np = portSnap?{x:portSnap.x,y:portSnap.y}:{...pt};
+      if(shiftDown && !portSnap) np = axisSnap(np, drawPts[drawPts.length-1]);
+      drawPts.push(np);
+    }
+    render(); return;
+  }
+
+  // ── SEAL ──
+  if(tool==='seal'){
+    sealStart={...pt}; drawing=true; drawCur={...pt}; render(); return;
+  }
+
+  // ── MANOMETER ──
+  if(tool==='manometer'){
+    const a=mkManometer(pt.x-MANO_W/2,pt.y-MANO_H/2,'');
+    saveHistory(); annotations.push(a); selected=a.id;
+    setTool('select'); render();
+    const sc=toCanvas(a.x+a.w/2,a.y+a.h*0.15);
+    openEditor(a.id,'serial',sc.x,sc.y,'');
+    return;
+  }
+
+  // ── CALLOUT ──
+  if(tool==='callout'){
+    const a=mkCallout(pt.x-65,pt.y-21,'Note',pt.x,pt.y+80);
+    saveHistory(); annotations.push(a); selected=a.id;
+    setTool('select'); render();
+    const sc=toCanvas(a.x+4/scale,a.y+4/scale);
+    openEditor(a.id,'text',sc.x,sc.y,'Note');
+    return;
+  }
+
+  // ── RFI ──
+  if(tool==='rfi'){
+    const a=mkRFI(pt.x,pt.y,'RFI');
+    saveHistory(); annotations.push(a); selected=a.id;
+    setTool('select'); render();
+    const sc=toCanvas(a.x,a.y);
+    openEditor(a.id,'label',sc.x,sc.y,'RFI');
+    return;
+  }
+
+  // ── KEY ──
+  if(tool==='key'){
+    const a=mkKey(pt.x-240,pt.y-60);
+    saveHistory(); annotations.push(a); selected=a.id;
+    setTool('select'); render();
+    return;
+  }
+}
+
+function onMouseMove(e){
+  const cv=getEvtCanvas(e);
+  const pt=toPDF(cv.x,cv.y);
+
+  // Pan
+  if(panning){
+    offX=panOff.x-(e.clientX-panStart.x)/scale;
+    offY=panOff.y-(e.clientY-panStart.y)/scale;
+    render(); return;
+  }
+
+  // Drag leader dot
+  if(dragLeader&&dragAnn){ dragAnn.lx=pt.x; dragAnn.ly=pt.y; render(); return; }
+
+  // Drag vertex handle
+  if(dragHandle>=0&&dragAnn){
+    dragAnn.points[dragHandle]={x:pt.x,y:pt.y};
+    render(); return;
+  }
+
+  // Drag annotation body
+  if(dragging&&dragAnn&&dragOrigin){
+    const dx=pt.x-dragOrigin.x, dy=pt.y-dragOrigin.y;
+    const orig=dragSnapshot, a=dragAnn;
+    if(a.type==='boundary'||LINE_TOOLS.has(a.type)){
+      a.points=orig.points.map(p=>({x:p.x+dx,y:p.y+dy}));
+    } else if(a.type==='seal'){
+      a.cx=orig.cx+dx; a.cy=orig.cy+dy;
+    } else if(a.type==='manometer'){
+      a.x=orig.x+dx; a.y=orig.y+dy;
+      // Anchor connected polyline endpoints
+      if(connSnapshot){
+        for(const c of connSnapshot.filter(c=>c.manoId===a.id)){
+          const line=annotations.find(l=>l.id===c.lineId);
+          if(!line||!line.points) continue;
+          const snap=lineSnapshots[c.lineId];
+          if(!snap) continue;
+          const epIdx=c.ep===0?0:snap.points.length-1;
+          if(line.points[epIdx]){
+            line.points[epIdx]={x:snap.points[epIdx].x+dx, y:snap.points[epIdx].y+dy};
+          }
+        }
+      }
+    } else if(a.type==='callout'){
+      a.x=orig.x+dx; a.y=orig.y+dy; a.lx=orig.lx+dx; a.ly=orig.ly+dy;
+    } else if(a.type==='rfi'){
+      a.x=orig.x+dx; a.y=orig.y+dy;
+    } else if(a.type==='key'){
+      a.x=orig.x+dx; a.y=orig.y+dy;
+    }
+    render(); return;
+  }
+
+  // Track mouse for edge-pan
+  lastMouseScreen = cv;
+
+  // Snap detection during line/boundary drawing
+  if(drawing&&(LINE_TOOLS.has(tool))){
+    snapTarget=findSnap(pt.x,pt.y);
+  } else {
+    snapTarget=null;
+  }
+
+  // Update cursor position (shift-lock to axis from last vertex when drawing polyline/boundary)
+  if(drawing && (tool==='boundary'||LINE_TOOLS.has(tool)) && shiftDown && drawPts.length>0 && !snapTarget){
+    drawCur = axisSnap(pt, drawPts[drawPts.length-1]);
+  } else {
+    drawCur={...pt};
+  }
+
+  // Update edge-pan velocity
+  updateEdgePan(cv.x, cv.y);
+
+  render();
+}
+
+function onMouseUp(e){
+  if(panning){ panning=false; canvas.classList.remove('cur-panning'); render(); return; }
+  if(dragLeader){ dragLeader=false; dragAnn=null; render(); return; }
+  if(dragHandle>=0){ dragHandle=-1; dragAnn=null; render(); return; }
+  if(dragging){ dragging=false; dragAnn=null; dragOrigin=null; render(); return; }
+
+  const cv=getEvtCanvas(e);
+  const pt=toPDF(cv.x,cv.y);
+
+  // Finalize seal
+  if(drawing&&tool==='seal'&&sealStart){
+    const rx=Math.abs(pt.x-sealStart.x)/2, ry=Math.abs(pt.y-sealStart.y)/2;
+    if(rx>2/scale&&ry>2/scale){
+      saveHistory();
+      const a=mkSeal(sealStart.x+(pt.x-sealStart.x)/2, sealStart.y+(pt.y-sealStart.y)/2, rx, ry);
+      annotations.push(a); selected=a.id;
+    }
+    drawing=false; sealStart=null; render();
+    setTool('select');
+  }
+}
+
+function onDblClick(e){
+  const cv=getEvtCanvas(e);
+  const pt=toPDF(cv.x,cv.y);
+
+  // Close boundary
+  if(tool==='boundary'&&drawing&&drawPts.length>2){
+    commitBoundary(); return;
+  }
+
+  // Finish polyline (line tools)
+  if(LINE_TOOLS.has(tool)&&drawing){
+    commitPolyline(); return;
+  }
+
+  // Edit label on existing annotation
+  if(tool==='select'){
+    const hit=findHit(pt.x,pt.y);
+    if(!hit) return;
+    let field,val;
+    if(hit.type==='manometer'){field='serial';val=hit.serial;}
+    else if(hit.type==='callout'){field='text';val=hit.text;}
+    else if(hit.type==='rfi'){field='label';val=hit.label;}
+    if(field){
+      selected=hit.id;
+      const bb=getBBox(hit);
+      const sc=toCanvas(bb.x+bb.w/2,bb.y+bb.h/2);
+      openEditor(hit.id,field,sc.x,sc.y,val);
+    }
+  }
+}
+
+function onWheel(e){
+  e.preventDefault();
+  const cv=getEvtCanvas(e);
+  const factor=e.deltaY<0?1.03:1/1.03;
+  setZoom(scale*factor,cv.x,cv.y);
+  render();
+}
+
+// ─────────────────────────────────────────
+//  EDGE AUTO-PAN
+// ─────────────────────────────────────────
+const EDGE_ZONE    = 64;   // px from edge that triggers pan
+const EDGE_MAX_SPD = 5;    // max screen px per frame
+
+function updateEdgePan(sx, sy){
+  if(!drawing){ edgePanVx=0; edgePanVy=0; return; }
+  const W=canvas.width, H=canvas.height;
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  edgePanVx = sx<EDGE_ZONE       ? -EDGE_MAX_SPD*clamp((EDGE_ZONE-sx)/EDGE_ZONE,0,1)
+            : sx>W-EDGE_ZONE     ?  EDGE_MAX_SPD*clamp((sx-(W-EDGE_ZONE))/EDGE_ZONE,0,1)
+            : 0;
+  edgePanVy = sy<EDGE_ZONE       ? -EDGE_MAX_SPD*clamp((EDGE_ZONE-sy)/EDGE_ZONE,0,1)
+            : sy>H-EDGE_ZONE     ?  EDGE_MAX_SPD*clamp((sy-(H-EDGE_ZONE))/EDGE_ZONE,0,1)
+            : 0;
+}
+
+(function edgePanLoop(){
+  if(drawing && (edgePanVx||edgePanVy)){
+    offX += edgePanVx/scale;
+    offY += edgePanVy/scale;
+    drawCur = toPDF(lastMouseScreen.x, lastMouseScreen.y);
+    render();
+  }
+  requestAnimationFrame(edgePanLoop);
+})();
+
+// ─────────────────────────────────────────
+//  KEYBOARD
+// ─────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if(e.key==='Delete'||e.key==='Backspace'){
+    if(drawing && (tool==='boundary' || LINE_TOOLS.has(tool)) && drawPts.length>0){
+      drawPts.pop();
+      if(drawPts.length===0){ drawing=false; startSnap=null; snapTarget=null; }
+      render();
+    } else {
+      deleteSelected();
+    }
+  }
+  if(e.ctrlKey&&e.key==='z'){e.preventDefault();undo();}
+  if(e.ctrlKey&&(e.key==='y'||(e.shiftKey&&e.key==='Z'))){e.preventDefault();redo();}
+  if(e.key===' '){e.preventDefault();spaceDown=true;if(!panning)canvas.classList.add('cur-pan');}
+  if(e.key==='Shift'){shiftDown=true; render();}
+  if(e.key==='PageUp'){e.preventDefault(); goToPage(pageIdx-1);}
+  if(e.key==='PageDown'){e.preventDefault(); goToPage(pageIdx+1);}
+  if(e.key==='Escape') cancelDrawing();
+  const shortcuts={'1':'select','2':'boundary','3':'fan','4':'extRef',
+                   '5':'intRef','6':'seal','7':'manometer','8':'callout','9':'rfi','0':'key'};
+  if(shortcuts[e.key]) setTool(shortcuts[e.key]);
+});
+document.addEventListener('keyup',e=>{
+  if(e.key===' '){spaceDown=false;if(!panning){canvas.classList.remove('cur-pan');updateCursor();}}
+  if(e.key==='Shift'){shiftDown=false; render();}
+});
+function updateCursor(){
+  if(tool==='select') canvas.className='cur-select';
+  else canvas.className='cur-crosshair';
+}
+
+// ─────────────────────────────────────────
+//  HELP MODAL
+// ─────────────────────────────────────────
+function openHelp(){ document.getElementById('help-overlay').classList.add('visible'); }
+function closeHelp(){ document.getElementById('help-overlay').classList.remove('visible'); }
+document.getElementById('help-close').addEventListener('click', closeHelp);
+document.getElementById('help-overlay').addEventListener('click', e=>{
+  if(e.target.id === 'help-overlay') closeHelp();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && document.getElementById('help-overlay').classList.contains('visible')){
+    closeHelp();
+  }
+});
+
+// ─────────────────────────────────────────
+//  DONATION MODAL
+// ─────────────────────────────────────────
+function openDonate(){
+  const link = document.getElementById('donate-link');
+  if(link) link.setAttribute('href', ATP_DONATION_URL);
+  document.getElementById('donate-overlay').classList.add('visible');
+}
+function closeDonate(){
+  document.getElementById('donate-overlay').classList.remove('visible');
+}
+document.getElementById('donate-close').addEventListener('click', closeDonate);
+document.getElementById('donate-later').addEventListener('click', closeDonate);
+document.getElementById('donate-overlay').addEventListener('click', e=>{
+  if(e.target.id === 'donate-overlay') closeDonate();
+});
+// Help-modal "Buy me a coffee" link opens the BMAC page in a new tab.
+document.getElementById('help-donate-link').addEventListener('click', e=>{
+  e.preventDefault();
+  window.open(ATP_DONATION_URL, '_blank', 'noopener,noreferrer');
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && document.getElementById('donate-overlay').classList.contains('visible')){
+    closeDonate();
+  }
+});
+
+// Show on the 3rd open, then once every ATP_DONATION_DAYS days afterwards.
+(function maybeShowDonate(){
+  try {
+    const countKey = 'atp_openCount';
+    const timeKey  = 'atp_lastDonationPrompt';
+    const count = (parseInt(localStorage.getItem(countKey), 10) || 0) + 1;
+    localStorage.setItem(countKey, String(count));
+
+    const last = localStorage.getItem(timeKey);
+    const now  = Date.now();
+    let due = false;
+
+    if(!last){
+      // Haven't shown the prompt yet — wait for the 3rd open.
+      if(count >= 3) due = true;
+    } else {
+      // Already shown at least once — recurring cadence.
+      const elapsedDays = (now - parseInt(last, 10)) / (1000*60*60*24);
+      if(elapsedDays >= ATP_DONATION_DAYS) due = true;
+    }
+
+    if(due){
+      localStorage.setItem(timeKey, String(now));
+      // Delay so the app finishes rendering before the modal appears.
+      setTimeout(openDonate, 1200);
+    }
+  } catch(e) { /* private mode / storage unavailable — skip quietly */ }
+})();
+
+// ─────────────────────────────────────────
+//  EXPORT PNG
+// ─────────────────────────────────────────
+// ─────────────────────────────────────────
+//  ROTATE PDF 90° CW (+ annotations)
+// ─────────────────────────────────────────
+async function rotatePDF(){
+  if(!pdfBitmap){ alert('Open a PDF first.'); return; }
+
+  // Rotate the bitmap 90° clockwise
+  const rotC = document.createElement('canvas');
+  rotC.width  = pdfH;  // new width  = old height
+  rotC.height = pdfW;  // new height = old width
+  const rc = rotC.getContext('2d');
+  rc.translate(pdfH, 0);
+  rc.rotate(Math.PI / 2);
+  rc.drawImage(pdfBitmap, 0, 0);
+
+  // Transform annotation coordinates: (ox, oy) → (oldH - oy, ox)
+  const oldH = pdfH;
+  function rotPt(ox, oy){ return {x: oldH - oy, y: ox}; }
+
+  for(const a of annotations){
+    if(a.type==='boundary'||LINE_TOOLS.has(a.type)){
+      a.points = a.points.map(p => rotPt(p.x, p.y));
+    } else if(a.type==='seal'){
+      const nc = rotPt(a.cx, a.cy);
+      a.cx = nc.x; a.cy = nc.y;
+      [a.rx, a.ry] = [a.ry, a.rx];  // swap radii
+    } else if(a.type==='manometer'){
+      // Rectangle top-left after CW rotation: new_x = oldH - y - h, new_y = x
+      const nx = oldH - a.y - a.h, ny = a.x;
+      a.x = nx; a.y = ny;
+      [a.w, a.h] = [a.h, a.w];
+    } else if(a.type==='callout'){
+      const nx = oldH - a.y - a.h, ny = a.x;
+      a.x = nx; a.y = ny;
+      [a.w, a.h] = [a.h, a.w];
+      const nl = rotPt(a.lx, a.ly);
+      a.lx = nl.x; a.ly = nl.y;
+    } else if(a.type==='rfi'){
+      const np = rotPt(a.x, a.y);
+      a.x = np.x; a.y = np.y;
+    } else if(a.type==='key'){
+      const kh = getKeyHeight(a);
+      const nx = oldH - a.y - kh, ny = a.x;
+      a.x = nx; a.y = ny;
+    }
+  }
+
+  pdfBitmap = await createImageBitmap(rotC);
+  [pdfW, pdfH] = [pdfH, pdfW];
+  fitToWindow();
+  render();
+}
+
+// Render a single page (by index into pageData) with its annotations to an offscreen canvas.
+function renderPageToCanvas(idx){
+  // Make sure the live globals for the currently-visible page are persisted, so what's
+  // exported matches what's on screen even if the user hasn't switched away yet.
+  persistCurrentPage();
+  const p = pageData[idx]; if(!p) return null;
+  const offC = document.createElement('canvas');
+  offC.width = p.w; offC.height = p.h;
+  const c = offC.getContext('2d');
+  c.drawImage(p.bitmap, 0, 0);
+  // Temporarily point the global annotation/connection refs + pdf dims at this page
+  // so drawAnnotation() and drawExportLegend() use the correct data.
+  const savedScale=scale, savedOffX=offX, savedOffY=offY;
+  const savedA=annotations, savedC=connections, savedW=pdfW, savedH=pdfH;
+  scale=1; offX=0; offY=0;
+  annotations = p.annotations; connections = p.connections;
+  pdfW = p.w; pdfH = p.h;
+  for(const a of annotations) drawAnnotation(c,a,false);
+  drawExportLegend(c);
+  scale=savedScale; offX=savedOffX; offY=savedOffY;
+  annotations=savedA; connections=savedC; pdfW=savedW; pdfH=savedH;
+  return offC;
+}
+
+function baseName(){
+  return (projectName.textContent||'test-plan')
+    .replace(/\.pdf$/i,'').replace(/[^a-zA-Z0-9_\- ]/g,'_') || 'test-plan';
+}
+
+function exportPNG(){
+  if(!pageData.length){alert('Open a PDF or image first.');return;}
+  // Export the current page only as PNG.
+  const offC = renderPageToCanvas(pageIdx);
+  if(!offC) return;
+  const link=document.createElement('a');
+  const suffix = pageData.length>1 ? `-p${pageIdx+1}` : '';
+  link.download = baseName() + suffix + '-markup.png';
+  link.href = offC.toDataURL('image/png');
+  link.click();
+}
+
+async function exportPDF(){
+  if(!pageData.length){alert('Open a PDF or image first.');return;}
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    alert('PDF export library not loaded. If you are running the offline build, re-run build-offline.py with the latest script so jsPDF gets included.');
+    return;
+  }
+  const {jsPDF} = window.jspdf;
+  let doc = null;
+  for(let i=0; i<pageData.length; i++){
+    const off = renderPageToCanvas(i);
+    if(!off) continue;
+    const wPts = off.width  * 72/150;   // print at ~150 dpi target
+    const hPts = off.height * 72/150;
+    const orientation = wPts > hPts ? 'l' : 'p';
+    if(i===0){
+      doc = new jsPDF({orientation, unit:'pt', format:[wPts,hPts], compress:true});
+      // Embed attribution in PDF metadata so it survives redistribution.
+      try {
+        doc.setProperties({
+          title:    baseName() + ' — Airtightness Test Plan',
+          subject:  'Whole-Building Airtightness Test Plan',
+          author:   'Green Mountain Enclosure Consulting LLC',
+          creator:  'Airtightness Test Planner (Green Mountain Enclosure Consulting LLC, Bristol, VT)',
+          keywords: 'airtightness, blower door, building enclosure, test plan, GMEC'
+        });
+      } catch(e) { /* non-fatal */ }
+    } else {
+      doc.addPage([wPts,hPts], orientation);
+    }
+    const dataUrl = off.toDataURL('image/jpeg', 0.85);  // JPEG keeps file size reasonable
+    doc.addImage(dataUrl, 'JPEG', 0, 0, wPts, hPts, undefined, 'FAST');
+  }
+  doc.save(baseName() + '-markup.pdf');
+}
+
+function drawExportLegend(c){
+  const types=[...new Set(annotations.map(a=>a.type))];
+  if(!types.length) return;
+
+  const items=[];
+  if(types.includes('boundary'))  items.push({style:'line',color:'#9b27af',w:3.5, label:'Tested Boundary'});
+  if(types.includes('fan'))       items.push({style:'line',color:'#e53935',w:3.5, label:'Blower Door Fan'});
+  if(types.includes('extRef'))    items.push({style:'line',color:'#2e7d32',w:3.5, label:'Envelope Reference (Ext)'});
+  if(types.includes('intRef'))    items.push({style:'line',color:'#1565c0',w:3.5, label:'Envelope Reference (Int)',arrow:true});
+  if(types.includes('seal'))      items.push({style:'dashed',color:'#e53935',w:2, label:'Temporary Seal Area'});
+  if(types.includes('manometer')) items.push({style:'box',  color:'#9b27af',fill:'#f3e5f5',label:'Manometer'});
+  if(types.includes('callout'))   items.push({style:'box',  color:'#f9a825',fill:'#fff9c4',label:'Text Callout'});
+  if(types.includes('rfi'))       items.push({style:'badge',color:'#e53935',       label:'RFI / Issue Tag'});
+
+  const PH=30,PW=300,HDR=46,PAD=18;
+  const BH=HDR+items.length*PH+PAD;
+  const BX=pdfW-PW-28, BY=pdfH-BH-28;
+
+  // Drop shadow
+  c.fillStyle='rgba(0,0,0,0.1)'; c.fillRect(BX+5,BY+5,PW,BH);
+  c.fillStyle='white'; c.strokeStyle='#000'; c.lineWidth=2;
+  c.fillRect(BX,BY,PW,BH); c.strokeRect(BX,BY,PW,BH);
+  c.beginPath(); c.moveTo(BX,BY+HDR); c.lineTo(BX+PW,BY+HDR); c.stroke();
+
+  c.fillStyle='#000'; c.font='bold 18px Arial';
+  c.textAlign='left'; c.textBaseline='middle';
+  c.fillText('KEY:', BX+16, BY+HDR/2);
+
+  items.forEach((item,i)=>{
+    const iy=BY+HDR+(i+0.5)*PH;
+    const sx=BX+14, ex=BX+56;
+    if(item.style==='line'||item.style==='dashed'){
+      c.strokeStyle=item.color; c.lineWidth=item.w; c.lineCap='round';
+      if(item.style==='dashed') c.setLineDash([6,4]);
+      if(item.label==='Tested Boundary'){ c.shadowColor='#ff9800'; c.shadowBlur=10; }
+      c.beginPath(); c.moveTo(sx,iy); c.lineTo(ex,iy); c.stroke();
+      c.shadowBlur=0;
+      c.setLineDash([]); c.lineCap='butt';
+      if(item.arrow){
+        c.fillStyle=item.color; c.beginPath();
+        c.moveTo(ex,iy); c.lineTo(ex-11,iy-4); c.lineTo(ex-11,iy+4); c.closePath(); c.fill();
+      }
+    } else if(item.style==='box'){
+      c.fillStyle=item.fill; c.strokeStyle=item.color; c.lineWidth=2;
+      c.fillRect(sx,iy-10,42,20); c.strokeRect(sx,iy-10,42,20);
+      c.fillStyle=item.color; c.font='bold 8px Arial'; c.textAlign='center';
+      c.fillText('DG1000',sx+21,iy);
+    } else if(item.style==='badge'){
+      c.fillStyle=item.color; c.beginPath();
+      c.roundRect(sx,iy-10,42,20,4); c.fill();
+      c.fillStyle='white'; c.font='bold 9px Arial'; c.textAlign='center';
+      c.fillText('RFI',sx+21,iy);
+    }
+    c.fillStyle='#000'; c.font='bold 14px Arial';
+    c.textAlign='left'; c.textBaseline='middle';
+    c.fillText('= '+item.label, BX+66, iy);
+  });
+}
+
+// ─────────────────────────────────────────
+//  PDF / IMAGE LOADING (multi-page aware)
+// ─────────────────────────────────────────
+async function loadPDF(file){
+  projectName.textContent = 'Loading ' + file.name + ' …';
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const pages = [];
+  for(let pn=1; pn<=pdf.numPages; pn++){
+    projectName.textContent = `Loading ${file.name} — page ${pn}/${pdf.numPages}…`;
+    const page = await pdf.getPage(pn);
+    const vp   = page.getViewport({scale:PDF_RENDER_SCALE});
+    const offC = document.createElement('canvas');
+    offC.width = vp.width; offC.height = vp.height;
+    const oc = offC.getContext('2d');
+    await page.render({canvasContext:oc, viewport:vp}).promise;
+    const bm = await createImageBitmap(offC);
+    pages.push({bitmap:bm, w:vp.width, h:vp.height, annotations:[], connections:[], history:[], future:[]});
+  }
+  installPages(pages, file.name);
+}
+
+async function loadImage(file){
+  const url=URL.createObjectURL(file);
+  const img=new Image();
+  await new Promise(res=>{img.onload=res;img.src=url;});
+  const bm = await createImageBitmap(img);
+  URL.revokeObjectURL(url);
+  installPages([{bitmap:bm, w:img.naturalWidth, h:img.naturalHeight,
+                 annotations:[], connections:[], history:[], future:[]}], file.name);
+}
+
+function installPages(pages, name){
+  pageData = pages;
+  pageIdx  = -1;
+  projectName.textContent = name;
+  selected=null; cancelDrawing();
+  goToPage(0);
+  updatePageNav();
+}
+
+// Persist current page's live state back to pageData, then switch.
+function persistCurrentPage(){
+  if(pageIdx<0 || !pageData[pageIdx]) return;
+  const p = pageData[pageIdx];
+  p.annotations = annotations;
+  p.connections = connections;
+  p.history     = history;
+  p.future      = future;
+}
+
+function goToPage(i){
+  if(!pageData.length) return;
+  i = Math.max(0, Math.min(pageData.length-1, i));
+  if(i === pageIdx) return;
+  persistCurrentPage();
+  pageIdx = i;
+  const p = pageData[pageIdx];
+  pdfBitmap  = p.bitmap;
+  pdfW       = p.w;
+  pdfH       = p.h;
+  annotations= p.annotations;
+  connections= p.connections;
+  history    = p.history;
+  future     = p.future;
+  selected   = null;
+  cancelDrawing();
+  fitToWindow(); render();
+  updatePageNav();
+}
+
+function updatePageNav(){
+  const nav = document.getElementById('page-nav');
+  const ind = document.getElementById('page-indicator');
+  if(!pageData.length){ nav.style.display='none'; return; }
+  nav.style.display = pageData.length>1 ? 'inline-flex' : 'none';
+  ind.textContent = `Page ${pageIdx+1} / ${pageData.length}`;
+  document.getElementById('btn-prev-page').disabled = (pageIdx<=0);
+  document.getElementById('btn-next-page').disabled = (pageIdx>=pageData.length-1);
+}
+
+// ─────────────────────────────────────────
+//  WIRE UP BUTTONS
+// ─────────────────────────────────────────
+document.getElementById('btn-open').addEventListener('click',()=>fileInput.click());
+document.getElementById('topbar-open').addEventListener('click',()=>fileInput.click());
+document.getElementById('btn-rotate').addEventListener('click',rotatePDF);
+document.getElementById('btn-export').addEventListener('click',exportPNG);
+document.getElementById('topbar-export-png').addEventListener('click',exportPNG);
+document.getElementById('topbar-export-pdf').addEventListener('click',exportPDF);
+document.getElementById('btn-prev-page').addEventListener('click',()=>goToPage(pageIdx-1));
+document.getElementById('btn-next-page').addEventListener('click',()=>goToPage(pageIdx+1));
+document.getElementById('btn-help').addEventListener('click',openHelp);
+document.getElementById('btn-undo').addEventListener('click',undo);
+document.getElementById('btn-undo2').addEventListener('click',undo);
+document.getElementById('btn-redo').addEventListener('click',redo);
+document.getElementById('btn-redo2').addEventListener('click',redo);
+document.getElementById('btn-delete').addEventListener('click',deleteSelected);
+document.querySelectorAll('.tb-btn[data-tool]').forEach(btn=>{
+  btn.addEventListener('click',()=>{setTool(btn.dataset.tool); btn.blur();});
+});
+fileInput.addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(f.type==='application/pdf'||f.name.endsWith('.pdf')) loadPDF(f);
+  else loadImage(f);
+  fileInput.value='';
+});
+
+// ─────────────────────────────────────────
+//  RESIZE & DRAG-DROP
+// ─────────────────────────────────────────
+new ResizeObserver(()=>{
+  const r=canvasWrap.getBoundingClientRect();
+  canvas.width=r.width; canvas.height=r.height;
+  render();
+}).observe(canvasWrap);
+
+canvasWrap.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});
+canvasWrap.addEventListener('drop',e=>{
+  e.preventDefault();
+  const f=e.dataTransfer.files[0]; if(!f) return;
+  if(f.type==='application/pdf'||f.name.endsWith('.pdf')) loadPDF(f);
+  else loadImage(f);
+});
+
+// ── INIT ──
+const r=canvasWrap.getBoundingClientRect();
+canvas.width=r.width; canvas.height=r.height;
+setTool('select');
+render();
+</script>
+</body>
+</html>
